@@ -31,12 +31,13 @@ class InvalidTxtFileException(message: String) : Exception(message)
  */
 class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
         val reader: Reader,
-        val featureParseFunction: (TxtHeader, TxtRow) -> Sample<TData>,
-        val targetParseFunction: (TxtHeader, TxtRow) -> TTarget
+        val txtParseFunction: (List<String>) -> Dataset<TData, TTarget>
+        //val featureParseFunction: (TxtHeader, TxtRow) -> Sample<TData>,
+        //val targetParseFunction: (TxtHeader, TxtRow) -> TTarget
 ) : DatasetLoader<TData, TTarget> {
 
     private constructor(builder: Builder<TData, TTarget>)
-        : this(builder.reader, builder.featureParseFunction, builder.targetParseFunction)
+        : this(builder.reader, builder.txtParseFunction)
 
     private val datasetProvider = MemoizedComponentProvider("Dataset") { this.initialiseDataset() }
 
@@ -49,8 +50,9 @@ class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
     class Builder<UData, UTarget : Target<UData>> : ComponentLoaderBuilder<TxtDatasetLoader<UData, UTarget>> {
 
         lateinit var reader: Reader
-        lateinit var featureParseFunction: (TxtHeader, TxtRow) -> Sample<UData>
-        lateinit var targetParseFunction: (TxtHeader, TxtRow) -> UTarget
+        lateinit var txtParseFunction: (List<String>) -> Dataset<UData, UTarget>
+        //lateinit var featureParseFunction: (TxtHeader, TxtRow) -> Sample<UData>
+        //lateinit var targetParseFunction: (TxtHeader, TxtRow) -> UTarget
 
         /**
          * Sets the filename of the TXT file to load the data set from.
@@ -68,19 +70,23 @@ class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
             this.reader = reader
         }
 
+        fun txtParseFunction(function: (List<String>) -> Dataset<UData, UTarget>) = apply {
+            this.txtParseFunction = function
+        }
+
         /**
          * Sets the function to use when parsing features from the data set file.
          */
-        fun featureParseFunction(function: (TxtHeader, TxtRow) -> Sample<UData>) = apply {
+        /*fun featureParseFunction(function: (TxtHeader, TxtRow) -> Sample<UData>) = apply {
             this.featureParseFunction = function
-        }
+        }*/
 
         /**
          * Sets the function to use when parsing target values from the data set file.
          */
-        fun targetParseFunction(function: (TxtHeader, TxtRow) -> UTarget) = apply {
+        /*fun targetParseFunction(function: (TxtHeader, TxtRow) -> UTarget) = apply {
             this.targetParseFunction = function
-        }
+        }*/
 
         /**
          * Builds the instance with the given configuration information.
@@ -116,7 +122,7 @@ class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
 
         bufferedReader.close()
 
-        val lines=linesRead.toMutableList()
+        //val lines=linesRead.toMutableList()
 
 
         //val reader2 = FileReader(this.reader)
@@ -125,11 +131,11 @@ class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
         // Make sure there is data before we continue. There should be at least two lines in the file
         // (a header and one row of data). This check will let through a file with 2 data rows, but
         // there is not much that can be done -- plus things will probably break down later on...
-        if (lines.size < 2)
+        if (linesRead.size < 2)
             throw InvalidTxtFileException("TXT file should have a header row and one or more data rows.")
 
         // Assumes the header is in the first row (a reasonable assumption with TXT files).
-        val header = lines.removeAt(0)
+        /*val header = lines.removeAt(0)
 
         // Parse features and target values individually.
         val features = lines.map { line ->
@@ -138,9 +144,12 @@ class TxtDatasetLoader<TData, TTarget : Target<TData>> constructor(
 
         val targets = lines.map { line ->
             this.targetParseFunction(header, line)
-        }
+        }*/
 
-        return Dataset(features, targets)
+        val dataset = this.txtParseFunction(linesRead)
+
+        return dataset
+        //return Dataset(features, targets)
     }
 
     override val information = ModuleInformation(
